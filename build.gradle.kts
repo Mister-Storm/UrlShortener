@@ -43,6 +43,14 @@ kotlin {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    extensions.configure<JacocoTaskExtension> {
+        isEnabled = true // Ensure JaCoCo runs with tests
+    }
+    reports {
+        junitXml.required.set(true)
+        html.required.set(true)
+    }
+    finalizedBy(tasks.named<JacocoReport>("jacocoTestReport"))
 }
 
 
@@ -67,39 +75,57 @@ tasks.register<Test>("integrationTest") {
     group = "verification"
     testClassesDirs = sourceSets["intTest"].output.classesDirs
     classpath = sourceSets["intTest"].runtimeClasspath
+    useJUnitPlatform()
     shouldRunAfter(tasks.test)
+    extensions.configure<JacocoTaskExtension> {
+        isEnabled = true // Ensure JaCoCo runs with tests
+    }
+    reports {
+        junitXml.required.set(true)
+        html.required.set(true)
+    }
+    finalizedBy(tasks.named<JacocoReport>("jacocoTestReport"))
 }
 
-tasks.jacocoTestReport {
-    dependsOn(tasks.named<Test>("test"), tasks.named<Test>("integrationTest"))
+tasks.named<JacocoReport>("jacocoTestReport") {
+    dependsOn(tasks.named<Test>("test"), tasks.named<Test>("integrationTest")) // Run both test types first
 
     reports {
         xml.required.set(true)
         html.required.set(true)
     }
-
     executionData.setFrom(
-        executionData.setFrom(
-            fileTree(layout.buildDirectory).include(
-                "jacoco/test.exec",
-                "jacoco/integrationTest.exec"
-            )
+        fileTree(layout.buildDirectory).include(
+            "jacoco/test.exec",
+            "jacoco/integrationTest.exec"
         )
     )
 
+    sourceDirectories.setFrom(files("${project.projectDir}/src/main/kotlin"))
+    classDirectories.setFrom(files("${layout.buildDirectory}/classes/kotlin/main"))
     sourceSets(sourceSets["main"])
 }
 
+
 tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
-    dependsOn(tasks.named<Test>("test"), tasks.named<Test>("integrationTest"))
+    dependsOn(tasks.named<JacocoReport>("jacocoTestReport"))
+    executionData.setFrom(
+        fileTree(layout.buildDirectory).include(
+            "jacoco/test.exec",
+            "jacoco/integrationTest.exec"
+        )
+    )
+
+    sourceDirectories.setFrom(files("${project.projectDir}/src/main/kotlin"))
+    classDirectories.setFrom(files("${layout.buildDirectory}/classes/kotlin/main"))
 
     violationRules {
         rule {
-            element = "CLASS" // Check coverage per class
+            element = "CLASS"
             limit {
-                counter = "LINE"  // Check line coverage
+                counter = "LINE"
                 value = "COVEREDRATIO"
-                minimum = "0.7".toBigDecimal() // 70% minimum
+                minimum = "0.7".toBigDecimal()
             }
         }
     }
