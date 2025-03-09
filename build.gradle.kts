@@ -89,3 +89,18 @@ tasks.jacocoTestReport {
 
     sourceSets(sourceSets["main"])
 }
+
+tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+    dependsOn(tasks.named<Test>("test"), tasks.named<Test>("integrationTest"))
+
+    violationRules {
+        rule {
+            element = "CLASS" // Check coverage per class
+            limit {
+                counter = "LINE"  // Check line coverage
+                value = "COVEREDRATIO"
+                minimum = "0.7".toBigDecimal() // 70% minimum
+            }
+        }
+    }
+}
